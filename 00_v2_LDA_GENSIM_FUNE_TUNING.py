@@ -179,7 +179,7 @@ xl = plt.xlabel('Number of Topics')
 yl = plt.ylabel('Coherence Score')
 # -
 
-best_model_idx = coherence_df[coherence_df['Number of Topics'] == ].index[0]
+best_model_idx = coherence_df[coherence_df['Number of Topics'] == 25].index[0]
 best_lda_model = lda_models[best_model_idx]
 best_lda_model.num_topics
 
