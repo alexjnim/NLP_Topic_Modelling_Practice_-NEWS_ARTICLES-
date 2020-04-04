@@ -71,7 +71,7 @@ yl = plt.ylabel('Coherence Score')
 # ### Selecting LDA Model
 
 # +
-TOPICS = 30
+TOPICS = 25
 
 load_lda_model = gensim.models.ldamodel.LdaModel.load('models/gensim/model_'+str(TOPICS)+'.gensim')
 
@@ -123,6 +123,8 @@ corpus_topic_df.sort_values(by='Contribution %', ascending=False)
 corpus_topic_df.groupby('Dominant Topic').apply(lambda topic_set:
                                             (topic_set.sort_values(by=['Contribution %'],
                                                    ascending=False).iloc[0]))
+
+corpus_topic_df[corpus_topic_df['Dominant Topic'] == 18]
 
 # ### Visuaslizing topics with pyLDAvis
 
