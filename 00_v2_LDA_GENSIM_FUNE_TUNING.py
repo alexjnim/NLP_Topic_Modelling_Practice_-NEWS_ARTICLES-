@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ---
 # jupyter:
 #   jupytext:
@@ -118,6 +117,29 @@ print(bow_corpus[1][:50])
 # viewing actual terms and their counts
 print([(dictionary[idx] , freq) for idx, freq in bow_corpus[1][:50]])
 
+# ### save dictionary, norm_corpus_bigrams, pre_titles, pre_papers, etc
+
+import pickle  
+
+# +
+with open("lists/norm_corpus_bigrams.txt", "wb") as fp:
+    pickle.dump(norm_corpus_bigrams, fp)  
+
+with open("lists/pre_titles.txt", "wb") as fp:
+    pickle.dump(pre_titles, fp)    
+    
+with open("lists/pre_papers.txt", "wb") as fp:
+    pickle.dump(pre_papers, fp)    
+    
+with open("lists/bow_corpus.txt", "wb") as fp:
+    pickle.dump(bow_corpus, fp)  
+
+with open("lists/norm_papers.txt", "wb") as fp:
+    pickle.dump(norm_papers, fp)  
+# -
+
+dictionary.save('models/dictionary.gensim')
+
 # ### LDA TUNING; FINDING THE OPTIMAL NUMBER OF TOPICS
 #
 # Finding the optimal number of topics in a topic model is tough, given that it is like a model hyperparameter that you always have to set before training the model. We can use an iterative approach and build several models with differing numbers of topics and select the one that has the highest coherence score. To implement this method, we build the following function.
@@ -149,6 +171,9 @@ def topic_model_coherence_generator(corpus, texts, dictionary,
         coherence_score = cv_coherence_model_gensim_lda.get_coherence()
         coherence_scores.append(coherence_score)
         models.append(gensim_lda_model)
+        
+        ### saving each model
+        gensim_lda_model.save('models/gensim/model_'+str(topic_nums)+'.gensim')
 
     return models, coherence_scores
 
@@ -163,6 +188,13 @@ lda_models, coherence_scores = topic_model_coherence_generator(corpus=bow_corpus
 coherence_df = pd.DataFrame({'Number of Topics': range(2, 31, 1),
                         'Coherence Score': np.round(coherence_scores, 4)})
 coherence_df.sort_values(by=['Coherence Score'], ascending=False).head(10)
+
+# ### save coherence scores and visualize 
+
+coherence_df.to_csv('models/gensim_scores/coherence_df.csv', index=False)
+
+with open("models/gensim_scores/coherence_scores.txt", "wb") as fp:   #Pickling
+    pickle.dump(coherence_scores, fp)
 
 # +
 import matplotlib.pyplot as plt
@@ -179,11 +211,27 @@ xl = plt.xlabel('Number of Topics')
 yl = plt.ylabel('Coherence Score')
 # -
 
+# ### selecting best model based on coherence
+
 best_model_idx = coherence_df[coherence_df['Number of Topics'] == 25].index[0]
 best_lda_model = lda_models[best_model_idx]
 best_lda_model.num_topics
 
+# ### saving all models
 
+### saving all models
+for i in range(len(lda_models)):
+    lda_models[i].save('models/gensim/model_'+
+                       str(coherence_df['Number of Topics'].iloc[i])+
+                       '.gensim')
+
+# ### saving or loading best model
+
+# +
+best_lda_model.save('models/gensim/best_model'+str(best_lda_model.num_topics)+'.gensim')
+
+# best_lda_model = gensim.models.ldamodel.LdaModel.load('models/gensim/best_model_25.gensim')
+# -
 
 # ### checking topics
 
@@ -213,7 +261,7 @@ topics_df = pd.DataFrame([', '.join([term for term, wt in topic])
                          )
 topics_df
 
-# ### interpreting results
+# ### Interpreting results
 
 tm_results = best_lda_model[bow_corpus]
 
@@ -239,18 +287,16 @@ topic_stats_df = corpus_topic_df.groupby('Dominant Topic').agg({
                                                     '% Total Docs': np.size }
                                               })
 topic_stats_df = topic_stats_df['Dominant Topic'].reset_index()
-topic_stats_df['% Total Docs'] = topic_stats_df['% Total Docs'].apply(lambda row: round((row*100) / len(papers), 2))
+topic_stats_df['% Total Docs'] = topic_stats_df['% Total Docs'].apply(lambda row: round((row*100) / len(pre_papers), 2))
 topic_stats_df['Topic Desc'] = [topics_df.iloc[t]['Terms per Topic'] for t in range(len(topic_stats_df))]
 topic_stats_df
 # -
 
-# The results show us that most of the papers cover topics of probabilistic models and Bayesian modeling (Topic #8), followed by papers covering modeling and simulating how the brain works with neurons, cells, stimulus, and connections (Topic #10). Even Topic #14, covering reinforcement learning and robotics, has almost 6.32% representation of the total number of papers. This tells us it’s not a new thing and people have been researching it for decades!
-
-# ### document most dominant topic with highest contribution %
+# ### Document's most dominant topic with highest contribution %
 
 corpus_topic_df.sort_values(by='Contribution %', ascending=False)
 
-# ### Dominant Topics in Specific Research Papers
+# ### Dominant Topics in Specific Papers
 # Another interesting perspective is to select specific papers, view the most dominant topic in each of those papers, and see if that makes sense.
 
 pd.set_option('display.max_colwidth', 200)
@@ -267,8 +313,75 @@ corpus_topic_df.groupby('Dominant Topic').apply(lambda topic_set:
                                             (topic_set.sort_values(by=['Contribution %'],
                                                    ascending=False).iloc[0]))
 
-# Based on the paper titles and the corresponding topics depicted in Figure 6-12, they do make sense. It looks like our model has captured the relevant latent patterns and themes in our corpus.
+# Based on the paper titles and the corresponding topics depicted, they do make sense. It looks like our model has captured the relevant latent patterns and themes in our corpus.
 
 
+
+
+
+# ### Loading model
+
+load_lda_model = gensim.models.ldamodel.LdaModel.load('models/gensim/model_30.gensim')
+
+load_lda_model
+
+# +
+topics = [[(term, round(wt, 3))
+               for term, wt in load_lda_model.show_topic(n, topn=20)]
+                   for n in range(0, load_lda_model.num_topics)]
+
+pd.set_option('display.max_colwidth', -1)
+topics_df = pd.DataFrame([', '.join([term for term, wt in topic])
+                              for topic in topics],
+                         columns = ['Terms per Topic'],
+                         index=['Topic'+str(t) for t in range(1, load_lda_model.num_topics+1)]
+                         )
+topics_df
+# -
+
+tm_results = load_lda_model[bow_corpus]
+
+corpus_topics = [sorted(topics, key=lambda record: -record[1])[0]
+                     for topics in tm_results]
+corpus_topics[:5]
+
+corpus_topic_df = pd.DataFrame()
+corpus_topic_df['Document'] = range(0, len(pre_papers))
+corpus_topic_df['Dominant Topic'] = [item[0]+1 for item in corpus_topics]
+corpus_topic_df['Contribution %'] = [round(item[1]*100, 2) for item in corpus_topics]
+corpus_topic_df['Topic Desc'] = [topics_df.iloc[t[0]]['Terms per Topic'] for t in corpus_topics]
+corpus_topic_df['Title'] = pre_titles
+corpus_topic_df['Paper'] = pre_papers
+
+# +
+pd.set_option('display.max_colwidth', 200)
+
+topic_stats_df = corpus_topic_df.groupby('Dominant Topic').agg({
+                                                'Dominant Topic': {
+                                                    'Doc Count': np.size,
+                                                    '% Total Docs': np.size }
+                                              })
+topic_stats_df = topic_stats_df['Dominant Topic'].reset_index()
+topic_stats_df['% Total Docs'] = topic_stats_df['% Total Docs'].apply(lambda row: round((row*100) / len(pre_papers), 2))
+topic_stats_df['Topic Desc'] = [topics_df.iloc[t]['Terms per Topic'] for t in range(len(topic_stats_df))]
+topic_stats_df
+# -
+
+corpus_topic_df.sort_values(by='Contribution %', ascending=False)
+
+corpus_topic_df.groupby('Dominant Topic').apply(lambda topic_set:
+                                            (topic_set.sort_values(by=['Contribution %'],
+                                                   ascending=False).iloc[0]))
+
+# ### Visualizing topics with pyLDAvis
+
+# +
+import pyLDAvis.gensim
+
+load_lda_model = gensim.models.ldamodel.LdaModel.load('models/gensim/model_25.gensim')
+
+lda_display = pyLDAvis.gensim.prepare(load_lda_model, bow_corpus, dictionary, sort_topics=False)
+pyLDAvis.display(lda_display)
+# -
 
 
