@@ -16,108 +16,38 @@
 import pandas as pd
 import numpy as np
 
+# ### Loading data, dictionary and lists
+
 df_1 = pd.read_csv('data/articles1.csv')
 df_1
 
-titles = df_1['title'].array
-papers = df_1['content'].array
+# +
+import pickle
 
-titles[1]
+with open("lists/bow_corpus.txt", "rb") as fp:   # Unpickling
+    bow_corpus = pickle.load(fp)
 
-papers[1]
+with open("lists/norm_corpus_bigrams.txt", "rb") as fp:   # Unpickling
+    norm_corpus_bigrams = pickle.load(fp)
 
-# We perform some basic text wrangling or preprocessing before diving into topic modeling. We keep things simple here and perform tokenization, lemmatizing nouns, and removing stopwords and any terms having a single character.
-#
+with open("lists/norm_papers.txt", "rb") as fp:   # Unpickling
+    norm_papers = pickle.load(fp)
+
+with open("lists/pre_papers.txt", "rb") as fp:   # Unpickling
+    pre_papers = pickle.load(fp)
+
+with open("lists/pre_titles.txt", "rb") as fp:   # Unpickling
+    pre_titles = pickle.load(fp)
 
 # +
-# %%time
 import nltk
-
-stop_words = nltk.corpus.stopwords.words('english')
-wtk = nltk.tokenize.RegexpTokenizer(r'\w+')
-wnl = nltk.stem.wordnet.WordNetLemmatizer()
-
-def normalise_corpus(papers, titles):
-    norm_papers = []
-    pre_papers = []
-    pre_titles = []
-    for i in range(len(papers)):
-        paper = papers[i]
-        title = titles[i]
-
-        paper = paper.lower()
-        paper_tokens = [token.strip() for token in wtk.tokenize(paper)]
-        paper_tokens = [wnl.lemmatize(token) for token in paper_tokens if not token.isnumeric()]
-        paper_tokens = [token for token in paper_tokens if len(token) > 1]
-        paper_tokens = [token for token in paper_tokens if token not in stop_words]
-        paper_tokens = list(filter(None, paper_tokens))
-
-        if paper_tokens:
-            norm_papers.append(paper_tokens)
-            pre_papers.append(paper)
-            pre_titles.append(title)
-
-    return norm_papers, pre_papers, pre_titles
-
-
-def normalize_corpus(papers):
-    norm_papers = []
-    for paper in papers:
-        paper = paper.lower()
-        paper_tokens = [token.strip() for token in wtk.tokenize(paper)]
-        paper_tokens = [wnl.lemmatize(token) for token in paper_tokens if not token.isnumeric()]
-        paper_tokens = [token for token in paper_tokens if len(token) > 1]
-        paper_tokens = [token for token in paper_tokens if token not in stop_words]
-        paper_tokens = list(filter(None, paper_tokens))
-        if paper_tokens:
-            norm_papers.append(paper_tokens)
-    return norm_papers
-
-
-# norm_papers = normalize_corpus(papers)
-
-norm_papers, pre_papers, pre_titles = normalise_corpus(papers, titles)
-
-print(len(norm_papers))
-# -
-
-len(pre_papers), len(pre_titles)
-
-# ### topic moedlling with gensim
-
-# +
 import gensim
 
-# higher threshold fewer phrases
-bigram = gensim.models.Phrases(norm_papers, min_count=20, threshold=20, delimiter=b'_')
+dictionary = gensim.corpora.Dictionary.load('models/dictionary.gensim')
 
-bigram_model = gensim.models.phrases.Phraser(bigram)
-
-# sample demonstration
-print(bigram_model[norm_papers[0]][:50])
-
-# +
-norm_corpus_bigrams = [bigram_model[doc] for doc in norm_papers]
-
-# Create a dictionary representation of the documents.
-dictionary = gensim.corpora.Dictionary(norm_corpus_bigrams)
-
-print('Sample word to number mappings:', list(dictionary.items())[:15])
-print('\n Total Vocabulary Size:', len(dictionary))
 # -
 
-# Filter out words that occur less than 20 documents, or more than 50% of the documents.
-dictionary.filter_extremes(no_below=20, no_above=0.6)
-print('Total Vocabulary Size:', len(dictionary))
-
-# Transforming corpus into bag of words vectors
-bow_corpus = [dictionary.doc2bow(text) for text in norm_corpus_bigrams]
-print(bow_corpus[1][:50])
-
-# viewing actual terms and their counts
-print([(dictionary[idx] , freq) for idx, freq in bow_corpus[1][:50]])
-
-# ### LDA
+# ### GENSIM LDA TEST - 10 TOPICS
 
 # +
 # %%time
@@ -127,7 +57,11 @@ lda_model = gensim.models.LdaModel(corpus=bow_corpus, id2word=dictionary,
                                    chunksize=1740, alpha="auto", eta="auto",
                                    random_state=42, iterations=500, num_topics=TOTAL_TOPICS,
                                    passes=20, eval_every=None)
+
 # -
+
+# save the LDA model 
+lda_model.save('models/gensim/model_'+str(TOTAL_TOPICS)+'.gensim')
 
 for topic_id, topic in lda_model.print_topics(num_topics=10, num_words=20):
     print('Topic #'+str(topic_id+1)+':')
@@ -153,7 +87,7 @@ for idx, topic in enumerate(topics_with_wts):
     print([term for wt, term in topic])
     print()
 
-# ### evaluating model
+# ### EVALUATE MODEL
 
 cv_coherence_model_lda = gensim.models.CoherenceModel(model=lda_model, corpus=bow_corpus,
                                                  texts=norm_corpus_bigrams,
@@ -171,7 +105,7 @@ print('Avg. Coherence Score (UMass):', avg_coherence_umass)
 print('Model Perplexity:', perplexity)
 
 
-# ### checking topics
+# ### CHECKING TOPICS
 
 topics_df = pd.DataFrame([[term for wt, term in topic]
                               for topic in topics_with_wts],
@@ -187,17 +121,13 @@ topics_df = pd.DataFrame([', '.join([term for wt, term in topic])
                          )
 topics_df
 
-# ### interpreting results
+# ### INTERPRETING RESULTS
 
 tm_results = lda_model[bow_corpus]
 
 corpus_topics = [sorted(topics, key=lambda record: -record[1])[0]
                      for topics in tm_results]
 corpus_topics[:5]
-
-corpus_topics[1]
-
-len(papers) - len(corpus_topics)
 
 corpus_topic_df = pd.DataFrame()
 corpus_topic_df['Document'] = range(0, len(papers) - 67)
@@ -206,7 +136,7 @@ corpus_topic_df['Contribution %'] = [round(item[1]*100, 2) for item in corpus_to
 corpus_topic_df['Topic Desc'] = [topics_df.iloc[t[0]]['Terms per Topic'] for t in corpus_topics]
 corpus_topic_df['Title'] = pre_titles
 corpus_topic_df['Paper'] = pre_papers
-#corpus_topic_df['Title'] = titles[:-67]
+
 
 # +
 pd.set_option('display.max_colwidth', 200)

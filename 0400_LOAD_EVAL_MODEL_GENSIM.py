@@ -16,7 +16,7 @@
 import pandas as pd
 import numpy as np
 
-# ### Loading data, dictionary and lists
+# ### LOAD DATA, DICTIONARY, COHERNECE SCORES, LISTS
 
 df_1 = pd.read_csv('data/articles1.csv')
 df_1
@@ -68,12 +68,15 @@ xl = plt.xlabel('Number of Topics')
 yl = plt.ylabel('Coherence Score')
 # -
 
-# ### Selecting LDA Model
+# ### SELECTING LDA MODEL BASED ON COHERENCE
 
 # +
 TOPICS = 25
 
 load_lda_model = gensim.models.ldamodel.LdaModel.load('models/gensim/model_'+str(TOPICS)+'.gensim')
+# -
+
+# ### EVALUATING TOPICS
 
 # +
 topics = [[(term, round(wt, 3))
@@ -87,6 +90,9 @@ topics_df = pd.DataFrame([', '.join([term for term, wt in topic])
                          index=['Topic'+str(t) for t in range(1, load_lda_model.num_topics+1)]
                          )
 topics_df
+# -
+
+# ### INTERPRETING RESULTS
 
 # +
 tm_results = load_lda_model[bow_corpus]
@@ -104,6 +110,8 @@ corpus_topic_df['Topic Desc'] = [topics_df.iloc[t[0]]['Terms per Topic'] for t i
 corpus_topic_df['Title'] = pre_titles
 corpus_topic_df['Paper'] = pre_papers
 
+# ### DISTRIBUTION OF TOPICS
+
 # +
 pd.set_option('display.max_colwidth', 200)
 
@@ -118,15 +126,35 @@ topic_stats_df['Topic Desc'] = [topics_df.iloc[t]['Terms per Topic'] for t in ra
 topic_stats_df
 # -
 
+# ### DOCUMENTS RELATED TO GIVEN TOPIC
+
+corpus_topic_df[corpus_topic_df['Dominant Topic'] == 13].sort_values(by='Contribution %', ascending=False)
+
+# ### DOCUMENT'S WITH HIGHEST TOPIC CONSTRIBUTION
+
 corpus_topic_df.sort_values(by='Contribution %', ascending=False)
+
+# ### DOMINENT TOPICS IN SPECIFIC DOCUMENTS
+
+pd.set_option('display.max_colwidth', 200)
+(corpus_topic_df[corpus_topic_df['Document']
+                 .isin([681, 9, 392, 1622, 17,
+                        906, 996, 503, 13, 733])])
+
+# ### RELEVANT DOCUMENTS PER TOPIC BASED ON CONTRIBUTION
 
 corpus_topic_df.groupby('Dominant Topic').apply(lambda topic_set:
                                             (topic_set.sort_values(by=['Contribution %'],
                                                    ascending=False).iloc[0]))
 
-corpus_topic_df[corpus_topic_df['Dominant Topic'] == 18]
-
-# ### Visuaslizing topics with pyLDAvis
+# ### VISUALIZING MODEL TOPICS WITH pyLDAvis
+#
+# pyLDAvis is designed to help users interpret the topics in a topic model that has been fit to a corpus of text data. The package extracts information from a fitted LDA topic model to inform an interactive web-based visualization.
+#
+# - Saliency: a measure of how much the term tells you about the topic.
+# - Relevance: a weighted average of the probability of the word given the topic and the word given the topic normalized by the probability of the topic.
+#
+# The size of the bubble measures the importance of the topics, relative to the data. 
 
 # +
 import pyLDAvis.gensim
