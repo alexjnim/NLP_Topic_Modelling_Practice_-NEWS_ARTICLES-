@@ -128,7 +128,7 @@ topic_stats_df
 
 # ### DOCUMENTS RELATED TO GIVEN TOPIC
 
-corpus_topic_df[corpus_topic_df['Dominant Topic'] == 13].sort_values(by='Contribution %', ascending=False)
+corpus_topic_df[corpus_topic_df['Dominant Topic'] == 8].sort_values(by='Contribution %', ascending=False)
 
 # ### DOCUMENT'S WITH HIGHEST TOPIC CONSTRIBUTION
 
