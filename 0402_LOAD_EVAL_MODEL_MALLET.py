@@ -74,6 +74,9 @@ yl = plt.ylabel('Coherence Score')
 TOPICS = 25
 
 load_lda_model = gensim.models.wrappers.LdaMallet.load('models/mallet/model_'+str(TOPICS)+'.gensim')
+
+# convert the ldaMallet to LdaModel. It was the only way to get some result with loading mallet models.
+load_lda_model = gensim.models.wrappers.ldamallet.malletmodel2ldamodel(load_lda_model)
 # -
 
 # ### EVALUATING TOPICS
