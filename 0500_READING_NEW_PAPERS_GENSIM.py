@@ -148,7 +148,7 @@ topic_preds = get_topic_predictions(topic_model=load_lda_model,
 
 # +
 results_df = pd.DataFrame()
-results_df['Papers'] = range(1, len(pre_new_papers)+1)
+results_df['Papers'] = range(1, len(new_pre_papers)+1)
 results_df['Dominant Topics'] = [[topic_num+1 for topic_num, wt in item] for item in topic_preds]
 res = results_df.set_index(['Papers'])['Dominant Topics'].apply(pd.Series).stack().reset_index(level=1, drop=True)
 results_df = pd.DataFrame({'Dominant Topics': res.values}, index=res.index)
@@ -159,8 +159,8 @@ results_df['Contribution %'] = [topic_wt for topic_list in
                                     for topic_wt in topic_list]
 
 results_df['Topic Desc'] = [topics_df.iloc[t-1]['Terms per Topic'] for t in results_df['Dominant Topics'].values]
-results_df['Title'] = [pre_new_titles[i-1][:200] for i in results_df.index.values]
-results_df['Paper Desc'] = [pre_new_papers[i-1][:200] for i in results_df.index.values]
+results_df['Title'] = [new_pre_titles[i-1][:200] for i in results_df.index.values]
+results_df['Paper Desc'] = [new_pre_papers[i-1][:200] for i in results_df.index.values]
 
 # +
 pd.set_option('display.max_colwidth', 300)
@@ -182,14 +182,16 @@ results_df.sort_values(by='Contribution %', ascending=False)
 
 # ### PREDICTING WITH MALLET
 
-MALLET_PATH = 'mallet-2.0.8/bin/mallet'
-
 load_lda_model
 
 # +
 TOPICS = 25
 
 load_lda_model = gensim.models.wrappers.LdaMallet.load('models/mallet/model_'+str(TOPICS)+'.gensim')
+
+
+# convert the ldaMallet to LdaModel. It was the only way to get some result with loading mallet model.
+load_lda_model = gensim.models.wrappers.ldamallet.malletmodel2ldamodel(load_lda_model)
 
 topics = [[(term, round(wt, 3))
                for term, wt in load_lda_model.show_topic(n, topn=20)]
@@ -220,7 +222,7 @@ topic_preds = get_topic_predictions(topic_model=load_lda_model,
 
 # +
 results_df = pd.DataFrame()
-results_df['Papers'] = range(1, len(pre_new_papers)+1)
+results_df['Papers'] = range(1, len(new_pre_papers)+1)
 results_df['Dominant Topics'] = [[topic_num+1 for topic_num, wt in item] for item in topic_preds]
 res = results_df.set_index(['Papers'])['Dominant Topics'].apply(pd.Series).stack().reset_index(level=1, drop=True)
 results_df = pd.DataFrame({'Dominant Topics': res.values}, index=res.index)
@@ -231,10 +233,13 @@ results_df['Contribution %'] = [topic_wt for topic_list in
                                     for topic_wt in topic_list]
 
 results_df['Topic Desc'] = [topics_df.iloc[t-1]['Terms per Topic'] for t in results_df['Dominant Topics'].values]
-results_df['Title'] = [pre_new_titles[i-1][:200] for i in results_df.index.values]
-results_df['Paper Desc'] = [pre_new_papers[i-1][:200] for i in results_df.index.values]
+results_df['Title'] = [new_pre_titles[i-1][:200] for i in results_df.index.values]
+results_df['Paper Desc'] = [new_pre_papers[i-1][:200] for i in results_df.index.values]
 
 
 pd.set_option('display.max_colwidth', 300)
 
 results_df.sort_values(by='Contribution %', ascending=False)
+# -
+
+
