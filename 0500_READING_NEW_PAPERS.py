@@ -182,11 +182,7 @@ results_df.sort_values(by='Contribution %', ascending=False)
 
 # ### PREDICTING WITH MALLET
 
-# +
 MALLET_PATH = 'mallet-2.0.8/bin/mallet'
-
-
-# -
 
 load_lda_model
 
