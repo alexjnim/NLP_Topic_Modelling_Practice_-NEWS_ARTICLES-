@@ -138,4 +138,8 @@ with open("lists/norm_papers.txt", "wb") as fp:
 
 dictionary.save('models/dictionary.gensim')
 
+bigram_model
+
+bigram_model.save('models/bigram_model.gensim')
+
 
