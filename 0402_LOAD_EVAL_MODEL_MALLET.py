@@ -103,15 +103,19 @@ tm_results = load_lda_model[bow_corpus]
 corpus_topics = [sorted(topics, key=lambda record: -record[1])[0]
                      for topics in tm_results]
 corpus_topics[:5]
-# -
 
+# +
 corpus_topic_df = pd.DataFrame()
 corpus_topic_df['Document'] = range(0, len(pre_papers))
 corpus_topic_df['Dominant Topic'] = [item[0]+1 for item in corpus_topics]
 corpus_topic_df['Contribution %'] = [round(item[1]*100, 2) for item in corpus_topics]
 corpus_topic_df['Topic Desc'] = [topics_df.iloc[t[0]]['Terms per Topic'] for t in corpus_topics]
+
+# change these into values from pre_df
+
 corpus_topic_df['Title'] = pre_titles
 corpus_topic_df['Paper'] = pre_papers
+# -
 
 # ### DISTRIBUTION OF TOPICS
 
