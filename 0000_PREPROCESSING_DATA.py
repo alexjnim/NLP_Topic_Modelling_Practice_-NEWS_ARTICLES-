@@ -20,6 +20,9 @@ import numpy as np
 df_1 = pd.read_csv('data/articles1.csv')
 df_1
 
+df_1 = df_1[df_1['content'].notna()]
+df_1 = df_1.reset_index(drop=True)
+
 titles = df_1['title'].array
 papers = df_1['content'].array
 
@@ -31,6 +34,42 @@ papers[1]
 
 # We perform some basic text wrangling or preprocessing before diving into topic modeling. We keep things simple here and perform tokenization, lemmatizing nouns, and removing stopwords and any terms having a single character.
 #
+
+# +
+# %%time
+import nltk
+
+stop_words = nltk.corpus.stopwords.words('english')
+wtk = nltk.tokenize.RegexpTokenizer(r'\w+')
+wnl = nltk.stem.wordnet.WordNetLemmatizer()
+
+def normalise_corpus(papers, full_df):
+    norm_papers = []
+    pre_papers = []
+    drop_index = []
+    for i in range(len(papers)):
+        paper = papers[i]
+
+        paper = paper.lower()
+        paper_tokens = [token.strip() for token in wtk.tokenize(paper)]
+        paper_tokens = [wnl.lemmatize(token) for token in paper_tokens if not token.isnumeric()]
+        paper_tokens = [token for token in paper_tokens if len(token) > 1]
+        paper_tokens = [token for token in paper_tokens if token not in stop_words]
+        paper_tokens = list(filter(None, paper_tokens))
+
+        if paper_tokens:
+            norm_papers.append(paper_tokens)
+            pre_papers.append(paper)
+        else:
+            drop_index.append(i)
+
+    pre_df = full_df.drop(full_df.index[drop_index])
+    
+    return norm_papers, pre_papers, pre_df
+
+# we have pre_papers and pre_titles because the normalizing function removes empty papers and titles
+# so for consistency the papers and titles that we perform LDA on will be kept 
+
 
 # +
 # %%time
@@ -67,10 +106,12 @@ def normalise_corpus(papers, titles):
 
 norm_papers, pre_papers, pre_titles = normalise_corpus(papers, titles)
 
-print(len(norm_papers))
+len(norm_papers), len(pre_papers), len(pre_titles)
 # -
 
 len(pre_papers), len(pre_titles)
+
+pre_df.to_csv('data/pre_df.csv')
 
 # ### TEXT REPRESENTATION WITH FEATURE ENGINEERING
 # Before feature engineering and vectorization, we want to extract some useful bi-gram based phrases from our research papers and remove some unnecessary terms. We leverage the very useful gensim.models.Phrases class for this. This capability helps us automatically detect common phrases from a stream of sentences, which are typically multi-word expressions/word n-grams. This implementation draws inspiration from the famous paper by Mikolov, et al., “Distributed Representations of Words and Phrases and their Compositionality,” which you can check out at https://arxiv.org/abs/1310.4546 . We start by extracting and generating words and bi-grams as phrases for each tokenized research paper. We can build this phrase generation model easily with the following code and test it on a sample paper.
